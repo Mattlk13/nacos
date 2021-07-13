@@ -16,21 +16,20 @@
 
 package com.alibaba.nacos.config.server.service;
 
+import com.alibaba.nacos.common.model.RestResult;
+import com.alibaba.nacos.common.utils.JacksonUtils;
 import com.alibaba.nacos.config.server.constant.Constants;
 import com.alibaba.nacos.config.server.model.SampleResult;
 import com.alibaba.nacos.config.server.service.notify.NotifyService;
 import com.alibaba.nacos.config.server.utils.ConfigExecutor;
-import com.alibaba.nacos.config.server.utils.JSONUtils;
 import com.alibaba.nacos.config.server.utils.LogUtil;
 import com.alibaba.nacos.core.cluster.Member;
 import com.alibaba.nacos.core.cluster.ServerMemberManager;
-import com.alibaba.nacos.core.utils.ApplicationUtils;
-import com.fasterxml.jackson.core.type.TypeReference;
-import org.apache.commons.lang3.StringUtils;
+import com.alibaba.nacos.sys.env.EnvUtil;
+import com.alibaba.nacos.common.utils.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
-import java.net.HttpURLConnection;
 import java.net.URLEncoder;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -75,7 +74,7 @@ public class ConfigSubService {
      * @return all path.
      */
     private String getUrl(String ip, String relativePath) {
-        return "http://" + ip + ApplicationUtils.getContextPath() + relativePath;
+        return "http://" + ip + EnvUtil.getContextPath() + relativePath;
     }
     
     private List<SampleResult> runCollectionJob(String url, Map<String, String> params,
@@ -130,26 +129,26 @@ public class ConfigSubService {
      */
     public SampleResult mergeSampleResult(SampleResult sampleCollectResult, List<SampleResult> sampleResults) {
         SampleResult mergeResult = new SampleResult();
-        Map<String, String> lisentersGroupkeyStatus = null;
+        Map<String, String> listenersGroupkeyStatus = null;
         if (sampleCollectResult.getLisentersGroupkeyStatus() == null || sampleCollectResult.getLisentersGroupkeyStatus()
                 .isEmpty()) {
-            lisentersGroupkeyStatus = new HashMap<String, String>(10);
+            listenersGroupkeyStatus = new HashMap<String, String>(10);
         } else {
-            lisentersGroupkeyStatus = sampleCollectResult.getLisentersGroupkeyStatus();
+            listenersGroupkeyStatus = sampleCollectResult.getLisentersGroupkeyStatus();
         }
         
         for (SampleResult sampleResult : sampleResults) {
-            Map<String, String> lisentersGroupkeyStatusTmp = sampleResult.getLisentersGroupkeyStatus();
-            for (Map.Entry<String, String> entry : lisentersGroupkeyStatusTmp.entrySet()) {
-                lisentersGroupkeyStatus.put(entry.getKey(), entry.getValue());
+            Map<String, String> listenersGroupkeyStatusTmp = sampleResult.getLisentersGroupkeyStatus();
+            for (Map.Entry<String, String> entry : listenersGroupkeyStatusTmp.entrySet()) {
+                listenersGroupkeyStatus.put(entry.getKey(), entry.getValue());
             }
         }
-        mergeResult.setLisentersGroupkeyStatus(lisentersGroupkeyStatus);
+        mergeResult.setLisentersGroupkeyStatus(listenersGroupkeyStatus);
         return mergeResult;
     }
     
     /**
-     * Query subsrciber's task from every nacos server nodes.
+     * Query subscriber's task from every nacos server nodes.
      *
      * @author Nacos
      */
@@ -173,24 +172,19 @@ public class ConfigSubService {
             try {
                 StringBuilder paramUrl = new StringBuilder();
                 for (Map.Entry<String, String> param : params.entrySet()) {
-                    paramUrl.append("&").append(param.getKey()).append("=")
+                    paramUrl.append('&').append(param.getKey()).append('=')
                             .append(URLEncoder.encode(param.getValue(), Constants.ENCODE));
                 }
                 
                 String urlAll = getUrl(ip, url) + "?" + paramUrl;
-                com.alibaba.nacos.config.server.service.notify.NotifyService.HttpResult result = NotifyService
-                        .invokeURL(urlAll, null, Constants.ENCODE);
+                RestResult<String> result = NotifyService.invokeURL(urlAll, null, Constants.ENCODE);
                 
                 // Http code 200
-                if (result.code == HttpURLConnection.HTTP_OK) {
-                    String json = result.content;
-                    SampleResult resultObj = JSONUtils.deserializeObject(json, new TypeReference<SampleResult>() {
-                    });
-                    return resultObj;
-                    
+                if (result.ok()) {
+                    return JacksonUtils.toObj(result.getData(), SampleResult.class);
                 } else {
                     
-                    LogUtil.DEFAULT_LOG.info("Can not get clientInfo from {} with {}", ip, result.code);
+                    LogUtil.DEFAULT_LOG.info("Can not get clientInfo from {} with {}", ip, result.getData());
                     return null;
                 }
             } catch (Exception e) {
@@ -218,9 +212,7 @@ public class ConfigSubService {
         SampleResult sampleCollectResult = new SampleResult();
         for (int i = 0; i < sampleTime; i++) {
             List<SampleResult> sampleResults = runCollectionJob(url, params, completionService, resultList);
-            if (sampleResults != null) {
-                sampleCollectResult = mergeSampleResult(sampleCollectResult, sampleResults);
-            }
+            sampleCollectResult = mergeSampleResult(sampleCollectResult, sampleResults);
         }
         return sampleCollectResult;
     }
@@ -238,9 +230,7 @@ public class ConfigSubService {
         SampleResult sampleCollectResult = new SampleResult();
         for (int i = 0; i < sampleTime; i++) {
             List<SampleResult> sampleResults = runCollectionJob(url, params, completionService, resultList);
-            if (sampleResults != null) {
-                sampleCollectResult = mergeSampleResult(sampleCollectResult, sampleResults);
-            }
+            sampleCollectResult = mergeSampleResult(sampleCollectResult, sampleResults);
         }
         return sampleCollectResult;
     }

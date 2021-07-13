@@ -28,6 +28,7 @@ import org.springframework.context.annotation.Conditional;
 import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
+import java.util.List;
 
 import static com.alibaba.nacos.config.server.service.repository.RowMapperManager.USER_ROW_MAPPER;
 
@@ -52,8 +53,9 @@ public class EmbeddedUserPersistServiceImpl implements UserPersistService {
      * @param username username string value.
      * @param password password string value.
      */
+    @Override
     public void createUser(String username, String password) {
-        String sql = "INSERT into users (username, password, enabled) VALUES (?, ?, ?)";
+        String sql = "INSERT INTO users (username, password, enabled) VALUES (?, ?, ?)";
         
         try {
             EmbeddedStorageContextUtils.addSqlContext(sql, username, password, true);
@@ -68,8 +70,9 @@ public class EmbeddedUserPersistServiceImpl implements UserPersistService {
      *
      * @param username username string value.
      */
+    @Override
     public void deleteUser(String username) {
-        String sql = "DELETE from users WHERE username=?";
+        String sql = "DELETE FROM users WHERE username=?";
         try {
             EmbeddedStorageContextUtils.addSqlContext(sql, username);
             databaseOperate.blockUpdate();
@@ -84,6 +87,7 @@ public class EmbeddedUserPersistServiceImpl implements UserPersistService {
      * @param username username string value.
      * @param password password string value.
      */
+    @Override
     public void updateUserPassword(String username, String password) {
         try {
             EmbeddedStorageContextUtils
@@ -94,17 +98,20 @@ public class EmbeddedUserPersistServiceImpl implements UserPersistService {
         }
     }
     
+    @Override
     public User findUserByUsername(String username) {
         String sql = "SELECT username,password FROM users WHERE username=? ";
         return databaseOperate.queryOne(sql, new Object[] {username}, USER_ROW_MAPPER);
     }
     
+    @Override
     public Page<User> getUsers(int pageNo, int pageSize) {
         
         PaginationHelper<User> helper = persistService.createPaginationHelper();
         
-        String sqlCountRows = "select count(*) from users where ";
-        String sqlFetchRows = "select username,password from users where ";
+        String sqlCountRows = "SELECT count(*) FROM users WHERE ";
+
+        String sqlFetchRows = "SELECT username,password FROM users WHERE ";
         
         String where = " 1=1 ";
         Page<User> pageInfo = helper
@@ -116,5 +123,11 @@ public class EmbeddedUserPersistServiceImpl implements UserPersistService {
             pageInfo.setPageItems(new ArrayList<>());
         }
         return pageInfo;
+    }
+    
+    @Override
+    public List<String> findUserLikeUsername(String username) {
+        String sql = "SELECT username FROM users WHERE username LIKE ? ";
+        return databaseOperate.queryMany(sql, new String[] {"%" + username + "%"}, String.class);
     }
 }

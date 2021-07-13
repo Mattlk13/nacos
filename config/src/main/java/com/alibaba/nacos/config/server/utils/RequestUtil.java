@@ -16,7 +16,9 @@
 
 package com.alibaba.nacos.config.server.utils;
 
-import org.apache.commons.lang3.StringUtils;
+import com.alibaba.nacos.api.common.Constants;
+import com.alibaba.nacos.auth.model.User;
+import com.alibaba.nacos.common.utils.StringUtils;
 
 import javax.servlet.http.HttpServletRequest;
 
@@ -35,6 +37,8 @@ public class RequestUtil {
     
     public static final String CLIENT_APPNAME_HEADER = "Client-AppName";
     
+    public static final String NACOS_USER_KEY = "nacosuser";
+    
     /**
      * get real client ip
      *
@@ -42,7 +46,7 @@ public class RequestUtil {
      * {@link HttpServletRequest#getRemoteAddr()}
      *
      * @param request {@link HttpServletRequest}
-     * @return
+     * @return remote ip address.
      */
     public static String getRemoteIp(HttpServletRequest request) {
         String xForwardedFor = request.getHeader(X_FORWARDED_FOR);
@@ -61,6 +65,33 @@ public class RequestUtil {
      */
     public static String getAppName(HttpServletRequest request) {
         return request.getHeader(CLIENT_APPNAME_HEADER);
+    }
+    
+    /**
+     * Gets the user of the client application in the Attribute.
+     *
+     * @param request {@link HttpServletRequest}
+     * @return may be return null
+     */
+    public static User getUser(HttpServletRequest request) {
+        Object userObj = request.getAttribute(NACOS_USER_KEY);
+        if (userObj == null) {
+            return null;
+        }
+    
+        return (User) userObj;
+    }
+    
+    /**
+     * Gets the username of the client application in the Attribute.
+     *
+     * @param request {@link HttpServletRequest}
+     * @return may be return null
+     */
+    public static String getSrcUserName(HttpServletRequest request) {
+        User user = getUser(request);
+        // If auth is disabled, get username from parameters by agreed key
+        return user == null ? request.getParameter(Constants.USERNAME) : user.getUserName();
     }
     
 }
